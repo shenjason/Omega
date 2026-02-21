@@ -9,34 +9,29 @@ import com.pedropathing.paths.PathChain;
 import org.firstinspires.ftc.teamcode.util.Assembly;
 
 public class AutoPaths {
-        public double width =15.5, height = 14.6;
+        public double width =16, height = 17;
         public boolean SIDE = Assembly.SIDE_BLUE;
         public Pose startPose = (new Pose(26.200, 130.000, Math.toRadians(52)));
-        public Pose shoot = (new Pose(52,92, Math.toRadians(180)));
+        public Pose shoot = (new Pose(56,92, Math.toRadians(180)));
         public Pose ready1 = (new Pose(48.0,86.0,  Math.toRadians(180)));
         public Pose load1 = (new Pose(24,86.0, Math.toRadians(180)));
         public Pose gatePos = (new Pose(20, 72, Math.toRadians(180)));
         public Pose ready2 = (new Pose(48.0,62.0, Math.toRadians(180)));
-        public Pose load2 = (new Pose(26.0, 62.0,  Math.toRadians(180)));
+        public Pose load2 = (new Pose(27.0, 62.0,  Math.toRadians(180)));
         public Pose ready3 = (new Pose(48.0,38.0, Math.toRadians(180)));
         public Pose load3 = (new Pose(24.0,38.0, Math.toRadians(180)));
         public Pose end = (new Pose(32.0,72.0, Math.toRadians(180)));
 
-        public Pose startPose_far = new Pose(48+width/2,height/2, Math.toRadians(90));
+        public Pose startPose_far = new Pose(56,8, Math.toRadians(90));
 
-        public Pose shoot_far = new Pose(60,24, Math.toRadians(180));
+        public Pose shoot_far = new Pose(65,26, Math.toRadians(180));
 
-        public Pose ready1_far = new Pose(48,32,Math.toRadians(180));
+        public Pose ready1_far = new Pose(48,36,Math.toRadians(180));
+        public Pose load1_far = new Pose(18,36,Math.toRadians(180));
 
-        public Pose ready2_far = new Pose(48, 56, Math.toRadians(180));
+        public Pose ready2_far = new Pose(width/2+1,24,Math.toRadians(-90));
 
-        public Pose load1_far = new Pose(18,32,Math.toRadians(180));
-
-        public Pose load2_far= new Pose(18, 56, Math.toRadians(180));
-
-        public Pose ready3_far = new Pose(width/2+1,24,Math.toRadians(-90));
-
-        public Pose load3_far = new Pose(width/2+1,height/2+1, Math.toRadians(90));
+        public Pose load2_far = new Pose(width/2+1,height/2+1, Math.toRadians(90));
         public Pose end_far = new Pose(36,36,Math.toRadians(90));
 
         public PathChain start_shoot, shoot_ready1, ready1_load1, load1_shoot, shoot_ready2,ready2_load2, load2_shoot, shoot_ready3, ready3_load3, load3_shoot, shoot_end, load1_gate, gate_shoot;
@@ -184,40 +179,19 @@ public class AutoPaths {
                     .addPath(
                             new BezierLine(x(shoot_far), x(ready2_far))
                     )
-                    .setConstantHeadingInterpolation(ROT)
+                    .setLinearHeadingInterpolation(ROT,-Math.toRadians(90))
                     .build();
             ready2_load2_far = follower
                     .pathBuilder()
                     .addPath(
                             new BezierLine(x(ready2_far), x(load2_far))
                     )
-                    .setConstantHeadingInterpolation(ROT)
+                    .setConstantHeadingInterpolation(-Math.toRadians(90))
                     .build();
             load2_shoot_far = follower
                     .pathBuilder()
                     .addPath(
                             new BezierLine(x(load2_far), x(shoot_far))
-                    )
-                    .setConstantHeadingInterpolation(ROT)
-                    .build();
-            shoot_ready3_far = follower
-                    .pathBuilder()
-                    .addPath(
-                            new BezierLine(x(shoot_far), x(ready3_far))
-                    )
-                    .setLinearHeadingInterpolation(ROT,-Math.toRadians(90))
-                    .build();
-            ready3_load3_far = follower
-                    .pathBuilder()
-                    .addPath(
-                            new BezierLine(x(ready3_far), x(load3_far))
-                    )
-                    .setConstantHeadingInterpolation(-Math.toRadians(90))
-                    .build();
-            load3_shoot_far = follower
-                    .pathBuilder()
-                    .addPath(
-                            new BezierLine(x(load3_far), x(shoot_far))
                     )
                     .setLinearHeadingInterpolation(-Math.toRadians(90), ROT)
                     .build();

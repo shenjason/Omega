@@ -17,7 +17,7 @@ import org.firstinspires.ftc.teamcode.assemblies.Robot;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 import org.firstinspires.ftc.teamcode.util.Assembly;
 
-@Autonomous(name = "Auto Blue (12 artifact non-overflow)", group = "Autonomous", preselectTeleOp = "TeleOpMain(Blue)")
+@Autonomous(name = "Auto Blue (12 artifact)", group = "Autonomous", preselectTeleOp = "TeleOpMain(Blue)")
 @Configurable // Panels
 public class autoBlue12C extends OpMode {
 
@@ -80,9 +80,9 @@ public class autoBlue12C extends OpMode {
     public int autonomousPathUpdate() {
         switch(pathState){
             case 0:
-                //set turret angle to 37 degrees
-                robot.shooter.setFlywheelVel(1260);
-                robot.shooter.turret.debugTargetAngle = Math.toRadians(40) * ((SIDE) ? 1 : -1);
+                //set turret angle to 39 degrees
+                robot.shooter.setFlywheelVel(1320);
+                robot.shooter.turret.debugTargetAngle = Math.toRadians(39) * ((SIDE) ? 1 : -1);
                 follower.followPath(paths.start_shoot, true);
                 pathState++;
                 shooterTimeoutTimer.resetTimer();
@@ -92,7 +92,7 @@ public class autoBlue12C extends OpMode {
             case 10:
             case 14:
                 if (!follower.isBusy() && (robot.shooter.atTargetFlywheelRPM() || shooterTimeoutTimer.getElapsedTimeSeconds() > 2.5)){
-                    robot.shooter.Shoot();
+                    robot.shoot();
                     pathState++;
                 }
                 break;

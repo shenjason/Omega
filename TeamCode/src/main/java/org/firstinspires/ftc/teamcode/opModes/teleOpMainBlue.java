@@ -14,7 +14,7 @@ import org.firstinspires.ftc.teamcode.util.Assembly;
 
 @Configurable
 @TeleOp(name = "TeleOpMain(Blue)", group = "TeleOp")
-public class teleOpMain extends OpMode {
+public class teleOpMainBlue extends OpMode {
 
     public static boolean SIDE = Assembly.SIDE_BLUE;
     public static boolean DEBUG = true;
@@ -23,15 +23,16 @@ public class teleOpMain extends OpMode {
 
     Robot robot;
 
-    public void setSIDE() {};
+    public void setSIDE() {
+        follower.setStartingPose(new Pose((SIDE) ? 32 : 112, 72, (SIDE) ? Math.toRadians(180) : 0));
+    };
 
     @Override
     public void init() {
-        setSIDE();
         follower = Constants.createFollower(hardwareMap);
-        robot = new Robot(hardwareMap, telemetry, follower, DEBUG, SIDE);
 
-        follower.setStartingPose(new Pose((SIDE) ? 32 : 112, 72, (SIDE) ? Math.toRadians(180) : 0));
+        setSIDE();
+        robot = new Robot(hardwareMap, telemetry, follower, DEBUG, SIDE);
     }
 
     @Override

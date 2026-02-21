@@ -46,14 +46,19 @@ public class Shooter extends Assembly {
             () -> shooting = true,
             this::openGate,
             () -> setIntakeMotorPower(-0.9),
-            () -> setIntakeMotorPower(-1),
             this::closeGate,
             () -> setIntakeMotorPower(0),
             () -> shooting = false
     ), List.of(
-            0d, 0d, 0.1d, 0.2d, 0.4d, 0d, 0.2d, 0d
+            0d, 0d, 0d, 0.7d, 0d, 0.3d, 0d
     ));
 
+    public Sequencer delayedShootSequence = new Sequencer(List.of(
+            () -> shooting = true,
+            () -> shootSequence.start()
+    ), List.of(
+            0d,0.8d
+    ));
 
 
     public void autoAdjustShooterParameters(){
@@ -155,6 +160,7 @@ public class Shooter extends Assembly {
         TagSize = turret.Ta;
 
         shootSequence.update();
+        delayedShootSequence.update();
     }
 
 }

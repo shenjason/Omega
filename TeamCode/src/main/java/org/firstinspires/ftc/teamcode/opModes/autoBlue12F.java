@@ -19,7 +19,7 @@ import org.firstinspires.ftc.teamcode.assemblies.Robot;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 import org.firstinspires.ftc.teamcode.util.Assembly;
 
-@Autonomous(name = "Auto Blue (Far)", group = "Autonomous", preselectTeleOp = "TeleOpMain(Blue)")
+@Autonomous(name = "Auto Blue (Far)", group = "Autonomous", preselectTeleOp = "TeleOpMain(Blue Far Start)")
 @Configurable // Panels
 public class autoBlue12F extends OpMode {
 
@@ -32,7 +32,7 @@ public class autoBlue12F extends OpMode {
 
     public Robot robot;
     public static double SPEED = 0.8;
-    Timer timer;
+    Timer timer, shooterTimeoutTimer;
 
     public void setSIDE(){}
 
@@ -60,6 +60,7 @@ public class autoBlue12F extends OpMode {
 
         pathState = 0;
         timer = new Timer();
+        shooterTimeoutTimer = new Timer();
     }
 
     @Override
@@ -82,9 +83,10 @@ public class autoBlue12F extends OpMode {
     public int autonomousPathUpdate() {
         switch(pathState) {
             case 0:
-                robot.shooter.setFlywheelVel(2000);
+                robot.shooter.setFlywheelVel(1470);
                 robot.shooter.turret.debugTargetAngle = Math.toRadians(60) * ((SIDE) ? 1 : -1);
                 follower.followPath(paths.start_shoot_far, true);
+                shooterTimeoutTimer.resetTimer();
                 pathState++;
                 break;
             case 2:
@@ -95,7 +97,6 @@ public class autoBlue12F extends OpMode {
                 break;
             case 3:
                 if (!follower.isBusy()) {
-                    follower.setMaxPower(0.35);
                     robot.intake(true);
                     follower.followPath(paths.ready1_load1_far, true);
                     pathState++;
@@ -103,17 +104,17 @@ public class autoBlue12F extends OpMode {
                 break;
             case 4:
                 if (!follower.isBusy()) {
-                    follower.setMaxPower(SPEED);
                     robot.intake(false);
                     follower.followPath(paths.load1_shoot_far, true);
+                    shooterTimeoutTimer.resetTimer();
                     pathState++;
                 }
                 break;
             case 1:
             case 5:
             case 9:
-                if (!follower.isBusy() && robot.shooter.atTargetFlywheelRPM()) {
-                    robot.shoot();
+                if (!follower.isBusy() && (robot.shooter.atTargetFlywheelRPM() || shooterTimeoutTimer.getElapsedTimeSeconds() > 3)) {
+                    robot.shooter.delayedShootSequence.start();
                     pathState++;
                 }
                 break;
@@ -127,19 +128,21 @@ public class autoBlue12F extends OpMode {
                 if (!follower.isBusy()) {
                     robot.intake(true);
                     follower.followPath(paths.ready2_load2_far, true);
+                    timer.resetTimer();
                     pathState++;
                 }
                 break;
             case 8 :
-                if(!follower.isBusy()){
-                    follower.setMaxPower(SPEED);
+                if(!follower.isBusy() && timer.getElapsedTimeSeconds() > 4){
                     robot.intake(false);
                     follower.followPath(paths.load2_shoot_far,true);
+                    shooterTimeoutTimer.resetTimer();
                     pathState++;
                 }
                 break;
             case 10:
                 if(!robot.shooter.shooting){
+                    robot.shooter.setFlywheelVel(0);
                     robot.shooter.turret.debugTargetAngle = Math.toRadians(0) * ((SIDE) ? 1 : -1);
                     follower.followPath(paths.shoot_end_far,true);
                     pathState=-1;

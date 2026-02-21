@@ -60,6 +60,7 @@ public class Robot extends Assembly {
     @Override
     public void hardwareInit() {
         led1 = hardwareMap.get(Servo.class, "light1");
+        led2 = hardwareMap.get(Servo.class, "light2");
         distanceSensor = hardwareMap.get(DistanceSensor.class, "distance");
 
 
@@ -75,11 +76,16 @@ public class Robot extends Assembly {
         if (shooter.turret.mode == Turret.TRACKING_MODE){
             if (shooter.turret.atLimit){
                 led1.setPosition(ORANGE);
+                led2.setPosition(ORANGE);
             }else {
-                led1.setPosition((shooter.canShoot()) ? GREEN : (shooter.atTargetFlywheelRPMBroad()) ? BLUE : RED);
+                double state = (shooter.canShoot()) ? GREEN : (shooter.atTargetFlywheelRPMBroad()) ? BLUE : RED;
+                led1.setPosition(state);
+                led2.setPosition(state);
             }
         }else{
-            led1.setPosition((distanceSensor.getDistance(DistanceUnit.MM) < 95) ? GREEN : RED);
+            double state = (distanceSensor.getDistance(DistanceUnit.MM) < 95) ? GREEN : RED;
+            led1.setPosition(state);
+            led2.setPosition(state);
         }
     }
 }
