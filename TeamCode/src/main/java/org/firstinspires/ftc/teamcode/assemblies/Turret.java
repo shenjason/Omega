@@ -22,14 +22,13 @@ import org.opencv.core.Mat;
 
 public class Turret extends Assembly {
     public double P=1.8,I=0.0,D=0.45,F=0.04;
-    public double _P=1.2,_I=0.0,_D=0.6;
+    public double _P=0.9,_I=0.0,_D=0.2;
     public PIDcontroller turretController, turretControllerSecondary;
     public boolean isInCamera, atLimit;
+    public double Ta, Tx;
     private double targetRotation;
-    public double Ta;
-    public double Tx;
-    private Limelight3A limelight;
 
+    private Limelight3A limelight;
     private DcMotor turretMotor;
     private Follower follower;
 
@@ -40,14 +39,14 @@ public class Turret extends Assembly {
     public final static int GPP = 0, PGP = 1, PPG = 2, BLUE_TARGET_LINE = 3, RED_TARGET_LINE = 4, TRACKING_MODE = 0, IDLE_MODE = 1;
     public int mode = IDLE_MODE;
     public double offsetAngle = 0;
+    public double fineTuneOffsetAngle = 0;
 
     public double debugTargetAngle = 0;
 
-    public TouchSensor magneticSensor;
 
     Timer cameraTTimer;
 
-    ActionPress magneticSwitchReset;
+
 
 
     public Turret(HardwareMap _hardwareMap, Telemetry _t, Follower f, boolean _debug, boolean _side) {
@@ -59,7 +58,6 @@ public class Turret extends Assembly {
     public void hardwareInit() {
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
         turretMotor = hardwareMap.get(DcMotor.class, "turret");
-//        magneticSensor = hardwareMap.get(TouchSensor.class, "magneticSensor");
 
         turretMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         turretMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
@@ -75,14 +73,11 @@ public class Turret extends Assembly {
         limelight.start();
 
         cameraTTimer = new Timer();
-
-//        magneticSwitchReset = new ActionPress(this::resetEncoder);
     }
 
 
     @Override
     public void update() {
-//        magneticSwitchReset.update(magneticSensor.isPressed(), (mode==Turret.IDLE_MODE));
 
 
         //Camera Data collection
@@ -107,11 +102,8 @@ public class Turret extends Assembly {
         debugAddData("Output", turretController.currentOutput);
         debugAddData("isPointed",atTargetPosition());
 
-        if (isInCamera && mode==Turret.TRACKING_MODE){
-            fineTuneTurretRotation();
-        }else{
-            estimateTurretRotation();
-        }
+        if (isInCamera && mode==Turret.TRACKING_MODE){fineTuneTurretRotation();}
+        else{estimateTurretRotation();}
     }
 
     public void fineTuneTurretRotation(){
@@ -121,23 +113,24 @@ public class Turret extends Assembly {
  
         turretControllerSecondary.p = _P; turretControllerSecondary.i = _I; turretControllerSecondary.d = _D; turretControllerSecondary.f = F;
 
-        double power = (Math.abs(Tx) <= 1.5) ? 0 : turretControllerSecondary.step(0, -limitedTx);
+        double power = (Math.abs(Tx) <= 1.5) ? 0 : turretControllerSecondary.step(fineTuneOffsetAngle, -limitedTx);
         atLimit = false;
         if (Math.abs(targetRotation) > Math.toRadians(70)){
             atLimit = true;
             power = turretController.step(Math.signum(targetRotation) * Math.toRadians(70), currentRotation);
-        }
+        }else{ turretController.reset();}
 
 
         turretMotor.setPower(power);
 
-
-        debugAddData("Fineerror", turretControllerSecondary.getE());
-        debugAddData("FinePower", turretControllerSecondary.currentOutput);
+        debugAddData("Fine Tune Offset", fineTuneOffsetAngle);
+        debugAddData("Fine Tune Error", turretControllerSecondary.getE());
+        debugAddData("Fine Tune Power", turretControllerSecondary.currentOutput);
     }
 
 
     public void estimateTurretRotation(){
+        turretControllerSecondary.reset();
 
         Pose cp = follower.getPose();
 

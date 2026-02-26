@@ -23,7 +23,7 @@ public class Robot extends Assembly {
     public Servo led1, led2;
     public DistanceSensor distanceSensor;
 
-    public double NOMINAL_VOLTAGE = 13.6;
+    public final double NOMINAL_VOLTAGE = 12.0d;
     public double VOLTAGE, Vk;
 
     VoltageSensor vs;

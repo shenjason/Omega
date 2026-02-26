@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.assemblies;
 
 import com.pedropathing.follower.Follower;
+import com.pedropathing.geometry.Pose;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
@@ -16,6 +17,7 @@ import org.firstinspires.ftc.teamcode.util.Sequencer;
 public class Shooter extends Assembly {
 
     //PID
+    public double NOMINAL_VOLTAGE = 12.0d;
     public double flywheelP = 2560, flyWheelI = 0, flyWheelD = 0, flyWheelF = 13.8d;
     //Servo pos
     final double OPEN_GATE_POS = 0.5, CLOSE_GATE_POS = 0.4;
@@ -25,10 +27,11 @@ public class Shooter extends Assembly {
     final double artifactMass = 0.0748;
     final double dragCoff = .0037d;
 
-    final double flyWheelEfficiencyCoff = 1.09;
+    final double flyWheelEfficiencyCoff = 1.09d;
 
-
-
+    //Prediction FlyWheel Vel adj
+    final double a_k=0, b_k=0, c_k=0;
+    final double cam_a = 202.1567, cam_b = 1166.6721;
 
 
 
@@ -52,8 +55,8 @@ public class Shooter extends Assembly {
     public Sequencer shootSequence = new Sequencer(List.of(
             () -> shooting = true,
             this::openGate,
-            () -> setIntakeMotorPower(-0.7),
-            () -> setIntakeMotorPower(0.9),
+            () -> setIntakeMotorPower(-0.8),
+            () -> setIntakeMotorPower(0.8),
             this::closeGate,
             () -> setIntakeMotorPower(0),
             () -> shooting = false
@@ -61,17 +64,30 @@ public class Shooter extends Assembly {
             0d, 0d, 0d, 0.7d, 0.1d, 0d, 0d
     ));
 
-    public Sequencer delayedShootSequence = new Sequencer(List.of(
+    public Sequencer shootSequenceLong = new Sequencer(List.of(
             () -> shooting = true,
-            () -> shootSequence.start()
+            this::openGate,
+            () -> setIntakeMotorPower(-0.5),
+            () -> setIntakeMotorPower(0.8),
+            this::closeGate,
+            () -> setIntakeMotorPower(0),
+            () -> shooting = false
     ), List.of(
-            0d,0.8d
+            0d, 0d, 0d, 1.2d, 0.1d, 0d, 0d
     ));
 
 
     public void autoAdjustShooterParameters(){
-        double vel = 1500;
-        if (turret.isInCamera) vel = Math.round((202.1567 / Math.sqrt(TagSize) + 1166.6721) * 0.1) * 10;
+        double vel = calcShooterVel(follower.getPose());
+        double vel2;
+        if (turret.isInCamera) {
+            vel2 = Math.round((cam_a / Math.sqrt(TagSize) + cam_b) * 0.1) * 10;
+            debugAddData("velDiff", vel2 - vel);
+            if (Math.abs(vel2 - vel) > 60){
+                vel = vel2;
+                debugAddData("velocityOff", vel2-vel);
+            }
+        }
 
         setFlywheelVel(vel);
     }
@@ -88,6 +104,8 @@ public class Shooter extends Assembly {
         flywheelMotor = hardwareMap.get(DcMotorEx.class, "shooter");
         intakeMotor1 = hardwareMap.get(DcMotor.class, "intake1");
         intakeMotor2 = hardwareMap.get(DcMotor.class, "intake2");
+
+        intakeMotor2.setDirection(DcMotorSimple.Direction.REVERSE);
 
         gateServo = hardwareMap.get(Servo.class, "gate");
 
@@ -132,24 +150,25 @@ public class Shooter extends Assembly {
     }
 
     public void setIntakeMotorPower(double power){
-        intakeMotor2.setPower(-power * Vk);
+        intakeMotor2.setPower(power * Vk);
         intakeMotor1.setPower(power * Vk);
     }
 
 
-    public double timeOfFlightPrediction(double distance, double flyWheelVel){
+    public double timeOfFlightPrediction(Pose p, double flyWheelVel){
         if (flyWheelVel <= 0) return 10;
         double maxTimeOfFlight = 2;
         double x = 0;
         double exitVel = flyWheelEfficiencyCoff * (flyWheelVel/28) * flyWheelDiameter * Math.PI * 0.5d;
-        debugAddData("ExitVel", exitVel * 39.37);
+//        debugAddData("ExitVel", exitVel * 39.37);
         double dt = 0.001;
         double currentVelX = exitVel * Math.cos(Math.toRadians(flyWheelAngle));
-        debugAddData("ExitVelX", currentVelX * 39.37);
+//        debugAddData("ExitVelX", currentVelX * 39.37);
         double currentVelY = exitVel * Math.sin(Math.toRadians(flyWheelAngle));
         int count = 0;
 
         double t = 0;
+        double distance = calcDistanceFromDepot(p.getX(), p.getY());
 
         while (x < (distance / 39.37) && count < (maxTimeOfFlight / dt)){
             double currentVel = Math.sqrt(currentVelX * currentVelX + currentVelY * currentVelY);
@@ -164,17 +183,21 @@ public class Shooter extends Assembly {
             count++;
             t+=dt;
         }
-        debugAddData("EndVelX", currentVelX * 39.37);
-        debugAddData("EndVelY", currentVelY * 39.37);
-        debugAddData("EndX", x * 39.37);
+
         return t;
     }
 
-    public double calcDistanceFromDepot(){
-        double X = follower.getPose().getX();
-        double Y = follower.getPose().getY();
+    public double calcShooterVel(Pose p){
+        double d = robotDistanceTo(p);
+        return Math.round((a_k*d*d + b_k*d + c_k)*0.1d)*10d;
+    }
 
+    public double calcDistanceFromDepot(double X, double Y){
         return Math.sqrt(Math.pow((X - ((side) ? 0 : 144)), 2) + Math.pow(Y-144, 2));
+    }
+
+    public double robotDistanceTo(Pose p){
+        return Math.sqrt(Math.pow(follower.getPose().getX() - p.getX(), 2) + Math.pow(follower.getPose().getY() - p.getY(), 2));
     }
 
 
@@ -206,16 +229,15 @@ public class Shooter extends Assembly {
         debugAddData("TargetVel", targetFlyWheelVel);
         debugAddData("InFrame", turret.isInCamera);
         debugAddLine("Prediction");
-        debugAddData("Flight Of Time: ", timeOfFlightPrediction(calcDistanceFromDepot(), targetFlyWheelVel));
-        debugAddData("Distance from Depot: ", calcDistanceFromDepot());
-
+        debugAddData("Flight Of Time: ", timeOfFlightPrediction(follower.getPose(), targetFlyWheelVel));
+        debugAddData("Distance from Depot: ", calcDistanceFromDepot(follower.getPose().getX(), follower.getPose().getY()));
 
 
         if (turret_active) turret.update();
         TagSize = turret.Ta;
 
         shootSequence.update();
-        delayedShootSequence.update();
+        shootSequenceLong.update();
     }
 
 }
