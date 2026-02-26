@@ -72,7 +72,7 @@ public class teleOpMainBlue extends OpMode {
         }
 
         if (gamepad1.dpadDownWasPressed()){
-            follower.setPose(new Pose(57, 8, (SIDE) ? Math.toRadians(180) : 0));
+            follower.setPose(new Pose((SIDE) ? 135 : 9 , 8.5, (SIDE) ? Math.toRadians(180) : 0));
         }
 
         if (gamepad1.dpadRightWasPressed()){

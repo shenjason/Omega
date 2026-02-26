@@ -7,6 +7,7 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.LED;
 import com.qualcomm.robotcore.hardware.Light;
 import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.hardware.VoltageSensor;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
@@ -22,10 +23,18 @@ public class Robot extends Assembly {
     public Servo led1, led2;
     public DistanceSensor distanceSensor;
 
+    public double NOMINAL_VOLTAGE = 13.6;
+    public double VOLTAGE, Vk;
+
+    VoltageSensor vs;
+    Follower follower;
+
     public Robot(HardwareMap _hardwareMap, Telemetry _t, Follower f, boolean _debug, boolean _side) {
         super(_hardwareMap, _t, _debug, _side);
 
         shooter = new Shooter(_hardwareMap, _t, f, _debug, _side);
+
+        follower = f;
 
         idle();
         intake(false);
@@ -61,6 +70,7 @@ public class Robot extends Assembly {
     public void hardwareInit() {
         led1 = hardwareMap.get(Servo.class, "light1");
         led2 = hardwareMap.get(Servo.class, "light2");
+        vs = hardwareMap.voltageSensor.get("Control Hub");
         distanceSensor = hardwareMap.get(DistanceSensor.class, "distance");
 
 
@@ -70,6 +80,18 @@ public class Robot extends Assembly {
 
     @Override
     public void update() {
+        VOLTAGE = vs.getVoltage();
+
+        Vk = NOMINAL_VOLTAGE / VOLTAGE;
+
+
+        shooter.Vk = Vk;
+        debugAddLine("Robot");
+        debugAddData("Nominal Voltage", NOMINAL_VOLTAGE);
+        debugAddData("Voltage", VOLTAGE);
+        debugAddData("Vk %", Vk * 100);
+
+
 
         shooter.update();
 

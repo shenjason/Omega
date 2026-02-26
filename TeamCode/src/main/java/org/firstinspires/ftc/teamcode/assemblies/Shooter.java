@@ -1,13 +1,6 @@
 package org.firstinspires.ftc.teamcode.assemblies;
 
-import android.nfc.Tag;
-
 import com.pedropathing.follower.Follower;
-import com.pedropathing.util.Timer;
-import com.qualcomm.hardware.limelightvision.LLResult;
-import com.qualcomm.hardware.limelightvision.Limelight3A;
-import com.qualcomm.robotcore.hardware.CRServo;
-import com.qualcomm.robotcore.hardware.ColorSensor;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
@@ -18,25 +11,39 @@ import com.sun.tools.javac.util.List;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.util.Assembly;
-import org.firstinspires.ftc.teamcode.util.PIDcontroller;
 import org.firstinspires.ftc.teamcode.util.Sequencer;
 
 public class Shooter extends Assembly {
-    public double flywheelP = 1280, flyWheelI = 0, flyWheelD = 0, flyWheelF = 13.8d;
 
+    //PID
+    public double flywheelP = 2560, flyWheelI = 0, flyWheelD = 0, flyWheelF = 13.8d;
+    //Servo pos
     final double OPEN_GATE_POS = 0.5, CLOSE_GATE_POS = 0.4;
+    //Prediction Vars
+    final double flyWheelDiameter = 0.072;
+    final double flyWheelAngle = 40;
+    final double artifactMass = 0.0748;
+    final double dragCoff = .0037d;
 
+    final double flyWheelEfficiencyCoff = 1.09;
+
+
+
+
+
+
+    //Ref
     DcMotorEx flywheelMotor;
     DcMotor intakeMotor1, intakeMotor2;
     Servo gateServo;
+
+    //Misc
     public double flywheelVelE = 0, targetFlyWheelVel = 0;
 
-    public double TagSize;
-
-
+    public double TagSize, Vk;
 
     public Turret turret;
-
+    Follower follower;
     public boolean turret_active = true, shooting = false;
 
     PIDFCoefficients pidfCoefficients;
@@ -45,12 +52,13 @@ public class Shooter extends Assembly {
     public Sequencer shootSequence = new Sequencer(List.of(
             () -> shooting = true,
             this::openGate,
-            () -> setIntakeMotorPower(-0.9),
+            () -> setIntakeMotorPower(-0.7),
+            () -> setIntakeMotorPower(0.9),
             this::closeGate,
             () -> setIntakeMotorPower(0),
             () -> shooting = false
     ), List.of(
-            0d, 0d, 0d, 0.7d, 0d, 0.3d, 0d
+            0d, 0d, 0d, 0.7d, 0.1d, 0d, 0d
     ));
 
     public Sequencer delayedShootSequence = new Sequencer(List.of(
@@ -69,9 +77,10 @@ public class Shooter extends Assembly {
     }
 
 
-    public Shooter(HardwareMap _hardwareMap, Telemetry _t, Follower follower, boolean _debug, boolean _side) {
+    public Shooter(HardwareMap _hardwareMap, Telemetry _t, Follower _follower, boolean _debug, boolean _side) {
         super(_hardwareMap, _t, _debug, _side);
-        turret = new Turret(hardwareMap, t, follower, false, side);
+        follower = _follower;
+        turret = new Turret(hardwareMap, t, _follower, false, side);
     }
 
     @Override
@@ -123,8 +132,49 @@ public class Shooter extends Assembly {
     }
 
     public void setIntakeMotorPower(double power){
-        intakeMotor2.setPower(-power);
-        intakeMotor1.setPower(power);
+        intakeMotor2.setPower(-power * Vk);
+        intakeMotor1.setPower(power * Vk);
+    }
+
+
+    public double timeOfFlightPrediction(double distance, double flyWheelVel){
+        if (flyWheelVel <= 0) return 10;
+        double maxTimeOfFlight = 2;
+        double x = 0;
+        double exitVel = flyWheelEfficiencyCoff * (flyWheelVel/28) * flyWheelDiameter * Math.PI * 0.5d;
+        debugAddData("ExitVel", exitVel * 39.37);
+        double dt = 0.001;
+        double currentVelX = exitVel * Math.cos(Math.toRadians(flyWheelAngle));
+        debugAddData("ExitVelX", currentVelX * 39.37);
+        double currentVelY = exitVel * Math.sin(Math.toRadians(flyWheelAngle));
+        int count = 0;
+
+        double t = 0;
+
+        while (x < (distance / 39.37) && count < (maxTimeOfFlight / dt)){
+            double currentVel = Math.sqrt(currentVelX * currentVelX + currentVelY * currentVelY);
+            double accelX = -(dragCoff/artifactMass) * currentVel * currentVelX;
+            double accelY = -9.81 -(dragCoff/artifactMass) * currentVel * currentVelY;
+
+            currentVelX += accelX * dt;
+            currentVelY += accelY * dt;
+
+            x += currentVelX * dt;
+
+            count++;
+            t+=dt;
+        }
+        debugAddData("EndVelX", currentVelX * 39.37);
+        debugAddData("EndVelY", currentVelY * 39.37);
+        debugAddData("EndX", x * 39.37);
+        return t;
+    }
+
+    public double calcDistanceFromDepot(){
+        double X = follower.getPose().getX();
+        double Y = follower.getPose().getY();
+
+        return Math.sqrt(Math.pow((X - ((side) ? 0 : 144)), 2) + Math.pow(Y-144, 2));
     }
 
 
@@ -155,6 +205,11 @@ public class Shooter extends Assembly {
         debugAddData("flywheelPowerOutput", flywheelMotor.getPower());
         debugAddData("TargetVel", targetFlyWheelVel);
         debugAddData("InFrame", turret.isInCamera);
+        debugAddLine("Prediction");
+        debugAddData("Flight Of Time: ", timeOfFlightPrediction(calcDistanceFromDepot(), targetFlyWheelVel));
+        debugAddData("Distance from Depot: ", calcDistanceFromDepot());
+
+
 
         if (turret_active) turret.update();
         TagSize = turret.Ta;

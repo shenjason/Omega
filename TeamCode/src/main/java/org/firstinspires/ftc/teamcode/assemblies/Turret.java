@@ -21,8 +21,8 @@ import org.opencv.core.Mat;
 
 
 public class Turret extends Assembly {
-    public double P=2.1,I=0.0,D=0.45,F=0.04;
-    public double _P=1.8,_I=0.0,_D=0.6;
+    public double P=1.8,I=0.0,D=0.45,F=0.04;
+    public double _P=1.2,_I=0.0,_D=0.6;
     public PIDcontroller turretController, turretControllerSecondary;
     public boolean isInCamera, atLimit;
     private double targetRotation;
@@ -35,7 +35,7 @@ public class Turret extends Assembly {
 
     private double targetPointX, currentRotation;
 
-    private final double TARGETBLUEX=16, TARGETY=131, TARGETREDX=144-TARGETBLUEX;
+    public final double TARGETBLUEX=16, TARGETY=131, TARGETREDX=144-TARGETBLUEX;
 
     public final static int GPP = 0, PGP = 1, PPG = 2, BLUE_TARGET_LINE = 3, RED_TARGET_LINE = 4, TRACKING_MODE = 0, IDLE_MODE = 1;
     public int mode = IDLE_MODE;

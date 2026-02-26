@@ -178,6 +178,7 @@ public class autoBlue12C extends OpMode {
                 break;
             case 16:
                 if (timer.getElapsedTimeSeconds() > 0.3){
+                    robot.shooter.openGate();
                     robot.shooter.turret.debugTargetAngle = 0;
                     pathState = -1;
                 }
