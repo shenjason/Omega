@@ -1,20 +1,14 @@
 package org.firstinspires.ftc.teamcode.assemblies;
 
 import com.pedropathing.follower.Follower;
-import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DistanceSensor;
 import com.qualcomm.robotcore.hardware.HardwareMap;
-import com.qualcomm.robotcore.hardware.LED;
-import com.qualcomm.robotcore.hardware.Light;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.teamcode.util.Assembly;
-import org.firstinspires.ftc.teamcode.util.Sequencer;
-
-import java.util.List;
 
 public class Robot extends Assembly {
     public final double GREEN = 0.45, ORANGE = 0.33, RED = 0.28, BLUE = .611;
@@ -41,8 +35,8 @@ public class Robot extends Assembly {
     }
 
     public void shoot(){
-        if (shooter.shooting) return;
-        shooter.Shoot();
+        if (shooter.canShoot()) return;
+        shooter.shoot();
     }
 
 
@@ -92,7 +86,7 @@ public class Robot extends Assembly {
         debugAddData("Vk %", Vk * 100);
 
 
-
+        follower.update();
         shooter.update();
 
         if (shooter.turret.mode == Turret.TRACKING_MODE){

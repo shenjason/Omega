@@ -12,12 +12,12 @@ import com.sun.tools.javac.util.List;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.util.Assembly;
+import org.firstinspires.ftc.teamcode.util.LowPassFilter;
 import org.firstinspires.ftc.teamcode.util.Sequencer;
 
 public class Shooter extends Assembly {
 
     //PID
-    public double NOMINAL_VOLTAGE = 12.0d;
     public double flywheelP = 640, flyWheelI = 0, flyWheelD = 0, flyWheelF = 12d;
     //Servo pos
     final double OPEN_GATE_POS = 0.5, CLOSE_GATE_POS = 0.4;
@@ -35,6 +35,9 @@ public class Shooter extends Assembly {
     final double a_k=0.0132663, b_k=3.10801, c_k=1076.338;
     final double cam_a = 342.85, cam_b = 1133.62;
 
+    final double accel_lowPass_alpha = 0.2;
+
+    private LowPassFilter accel_X_lowPass, accel_Y_lowPass;
 
 
     //Ref
@@ -57,7 +60,7 @@ public class Shooter extends Assembly {
     public Sequencer shootSequence = new Sequencer(List.of(
             () -> shooting = true,
             this::openGate,
-            () -> setIntakeMotorPower(-0.7),
+            () -> setIntakeMotorPower(-1),
             () -> setIntakeMotorPower(0.8),
             this::closeGate,
             () -> setIntakeMotorPower(0),
@@ -69,7 +72,7 @@ public class Shooter extends Assembly {
     public Sequencer shootSequenceLong = new Sequencer(List.of(
             () -> shooting = true,
             this::openGate,
-            () -> setIntakeMotorPower(-0.4),
+            () -> setIntakeMotorPower(-0.6),
             () -> setIntakeMotorPower(0.8),
             this::closeGate,
             () -> setIntakeMotorPower(0),
@@ -119,6 +122,9 @@ public class Shooter extends Assembly {
         goalX = (side) ? 0 : 144;
         goalY = 144;
 
+        accel_X_lowPass = new LowPassFilter(accel_lowPass_alpha);
+        accel_Y_lowPass = new LowPassFilter(accel_lowPass_alpha);
+
         closeGate();
     }
 
@@ -139,8 +145,8 @@ public class Shooter extends Assembly {
         return atTargetFlywheelRPM()&& turret.isPointed();
     }
 
-    public void Shoot(){
-        if (!canShoot()) return;
+    public void shoot(){
+        if (shooting) return;
         shootSequence.start();
     }
 
@@ -203,19 +209,17 @@ public class Shooter extends Assembly {
     }
 
 
-    public void idleMode(){
-        turret.mode = Turret.IDLE_MODE;
-    }
+    public void idleMode(){turret.mode = Turret.IDLE_MODE;}
 
-    public void trackingMode(){
-        turret.mode = Turret.TRACKING_MODE;
-    }
+    public void trackingMode(){turret.mode = Turret.TRACKING_MODE;}
 
     public void setShootingParms(){
+        double filtered_accel_X = accel_X_lowPass.step(follower.getAcceleration().getXComponent());
+        double filtered_accel_Y = accel_Y_lowPass.step(follower.getAcceleration().getYComponent());
         double posX_launch = follower.getPose().getX() + (follower.getVelocity().getXComponent() * shooterLatency) + (0.5d*follower.getAcceleration().getXComponent()*Math.pow(shooterLatency,2));
         double posY_launch = follower.getPose().getY() + (follower.getVelocity().getYComponent() * shooterLatency) + (0.5d*follower.getAcceleration().getYComponent()*Math.pow(shooterLatency,2));
-        double velX_launch = follower.getVelocity().getXComponent() + (follower.getAcceleration().getXComponent() * shooterLatency);
-        double velY_launch = follower.getVelocity().getYComponent() + (follower.getAcceleration().getYComponent() * shooterLatency);
+        double velX_launch = follower.getVelocity().getXComponent() + (filtered_accel_X * shooterLatency);
+        double velY_launch = follower.getVelocity().getYComponent() + (filtered_accel_Y * shooterLatency);
 
         double distance_to_goal = calcDistanceFromDepot(follower.getPose());
         double target_shooter_vel = calcShooterVel(distance_to_goal);
@@ -250,7 +254,7 @@ public class Shooter extends Assembly {
     @Override
     public void update() {
         if (turret.mode == Turret.TRACKING_MODE && !shooting) {
-            if (follower.getVelocity().getMagnitude() > 10 && turret.isInCamera){
+            if (turret.isInCamera){
                 setShootingParms();
             }else{
                 autoAdjustShooterParameters();

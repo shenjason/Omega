@@ -43,7 +43,6 @@ public class teleOpMainBlue extends OpMode {
     @Override
     public void loop() {
 
-        follower.update();
         robot.update();
 
 
@@ -67,7 +66,7 @@ public class teleOpMainBlue extends OpMode {
             }
         }
 
-        if (gamepad1.right_stick_button && !robot.shooter.shooting){
+        if (gamepad1.right_stick_button){
             robot.shoot();
         }
 

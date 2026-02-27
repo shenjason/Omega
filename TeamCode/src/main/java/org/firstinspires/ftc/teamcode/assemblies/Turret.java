@@ -17,6 +17,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 import org.firstinspires.ftc.teamcode.util.ActionPress;
 import org.firstinspires.ftc.teamcode.util.Assembly;
 import org.firstinspires.ftc.teamcode.util.PIDcontroller;
+import org.firstinspires.ftc.teamcode.util.SlewRateLimiter;
 import org.opencv.core.Mat;
 
 
@@ -26,27 +27,25 @@ public class Turret extends Assembly {
     public PIDcontroller turretController, turretControllerSecondary;
     public boolean isInCamera, atLimit;
     public double Ta, Tx;
-    private double targetRotation;
+    public int mode = IDLE_MODE;
+    public double offsetAngle = 0, debugTargetAngle=0, fineTuneOffsetAngle=0, targetPointX;
+
+
 
     private Limelight3A limelight;
     private DcMotor turretMotor;
     private Follower follower;
 
-    private double currentRotation;
-    public double targetPointX;
 
-    public static final double TARGET_BLUE_X=16, TARGET_Y=131, TARGET_RED_X=144-TARGET_BLUE_X;
-    public final double angleLimit=65;
+    private double currentRotation, targetRotation;
+
+
     public final static int GPP = 0, PGP = 1, PPG = 2, BLUE_TARGET_LINE = 3, RED_TARGET_LINE = 4, TRACKING_MODE = 0, IDLE_MODE = 1;
-    public int mode = IDLE_MODE;
-    public double offsetAngle = 0;
-    public double fineTuneOffsetAngle = 0;
-
-    public double debugTargetAngle = 0;
+    public static final double TARGET_BLUE_X=16, TARGET_Y=131, TARGET_RED_X=144-TARGET_BLUE_X;
+    public final double angleLimit=65, target_rate_limit=30;
 
 
-    Timer cameraTTimer;
-
+    Timer cameraTTimer; SlewRateLimiter turretFineTuneRateLimiter;
 
 
 
@@ -74,6 +73,7 @@ public class Turret extends Assembly {
         limelight.start();
 
         cameraTTimer = new Timer();
+        turretFineTuneRateLimiter = new SlewRateLimiter(target_rate_limit);
     }
 
 
@@ -114,7 +114,7 @@ public class Turret extends Assembly {
  
         turretControllerSecondary.p = _P; turretControllerSecondary.i = _I; turretControllerSecondary.d = _D; turretControllerSecondary.f = F;
 
-        double power = (Math.abs(Tx) <= 1.5) ? 0 : turretControllerSecondary.step(fineTuneOffsetAngle, -limitedTx);
+        double power = (Math.abs(Tx) <= 1.5) ? 0 : turretControllerSecondary.step(turretFineTuneRateLimiter.step(fineTuneOffsetAngle), -limitedTx);
         atLimit = false;
         if (Math.abs(targetRotation) > Math.toRadians(angleLimit)){
             atLimit = true;
