@@ -5,6 +5,7 @@ import com.bylazar.panels.Panels;
 import com.bylazar.telemetry.PanelsTelemetry;
 import com.bylazar.telemetry.TelemetryManager;
 import com.pedropathing.follower.Follower;
+import com.pedropathing.geometry.Pose;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
@@ -24,7 +25,6 @@ public class shooterPID extends OpMode {
     public static double P, I, D, F, TARGET_VEL;
     public static boolean LOAD = true;
 
-
     Shooter s;
 
 
@@ -41,6 +41,7 @@ public class shooterPID extends OpMode {
         }
 
         s.turret.mode = Turret.IDLE_MODE;
+        follower.startTeleopDrive(true);
     }
 
     @Override
@@ -59,6 +60,18 @@ public class shooterPID extends OpMode {
             s.setIntakeMotorPower(0);
         }
 
+        double speed = 0.8;
+        follower.setTeleOpDrive(
+                -gamepad1.left_stick_y * speed,
+                -gamepad1.left_stick_x * speed,
+                -Math.pow(gamepad1.right_stick_x, 3) * speed * 0.8,
+                true // Robot Centric
+        );
+
+        if (gamepad1.dpadDownWasPressed()){
+            follower.setPose(new Pose(135 , 8.5, Math.toRadians(180)));
+        }
+
 
         s.update();
 
@@ -72,5 +85,6 @@ public class shooterPID extends OpMode {
 
 
         telemetry.update();
+        follower.update();
     }
 }

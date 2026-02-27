@@ -21,8 +21,8 @@ import org.opencv.core.Mat;
 
 
 public class Turret extends Assembly {
-    public double P=1.8,I=0.0,D=0.45,F=0.04;
-    public double _P=0.9,_I=0.0,_D=0.2;
+    public double P=2.5,I=0,D=0.1,F=0.2;
+    public double _P=1.2,_I=0,_D=0.02, _F = 0.2;
     public PIDcontroller turretController, turretControllerSecondary;
     public boolean isInCamera, atLimit;
     public double Ta, Tx;
@@ -32,10 +32,11 @@ public class Turret extends Assembly {
     private DcMotor turretMotor;
     private Follower follower;
 
-    private double targetPointX, currentRotation;
+    private double currentRotation;
+    public double targetPointX;
 
-    public final double TARGETBLUEX=16, TARGETY=131, TARGETREDX=144-TARGETBLUEX;
-
+    public static final double TARGET_BLUE_X=16, TARGET_Y=131, TARGET_RED_X=144-TARGET_BLUE_X;
+    public final double angleLimit=65;
     public final static int GPP = 0, PGP = 1, PPG = 2, BLUE_TARGET_LINE = 3, RED_TARGET_LINE = 4, TRACKING_MODE = 0, IDLE_MODE = 1;
     public int mode = IDLE_MODE;
     public double offsetAngle = 0;
@@ -66,10 +67,10 @@ public class Turret extends Assembly {
         limelight.setPollRateHz(40);
 
         turretController = new PIDcontroller(P, I, D, F, -1, 1);
-        turretControllerSecondary = new PIDcontroller(_P, _I, _D, F, -1, 1);
+        turretControllerSecondary = new PIDcontroller(_P, _I, _D, _F, -1, 1);
 
         limelight.pipelineSwitch((side) ? BLUE_TARGET_LINE : RED_TARGET_LINE);
-        targetPointX = (side) ? TARGETBLUEX : TARGETREDX;
+        targetPointX = (side) ? TARGET_BLUE_X : TARGET_RED_X;
         limelight.start();
 
         cameraTTimer = new Timer();
@@ -115,9 +116,9 @@ public class Turret extends Assembly {
 
         double power = (Math.abs(Tx) <= 1.5) ? 0 : turretControllerSecondary.step(fineTuneOffsetAngle, -limitedTx);
         atLimit = false;
-        if (Math.abs(targetRotation) > Math.toRadians(70)){
+        if (Math.abs(targetRotation) > Math.toRadians(angleLimit)){
             atLimit = true;
-            power = turretController.step(Math.signum(targetRotation) * Math.toRadians(70), currentRotation);
+            power = turretController.step(Math.signum(targetRotation) * Math.toRadians(angleLimit), currentRotation);
         }else{ turretController.reset();}
 
 
@@ -140,13 +141,13 @@ public class Turret extends Assembly {
         double robotAngle = cp.getHeading();
 
 
-        double angle = getAngle(X,Y,targetPointX,TARGETY);
+        double angle = getAngle(X,Y,targetPointX,TARGET_Y);
 
 
         targetRotation = getDiff(angle,robotAngle);
         double clamped_target_rot = targetRotation;
-        if (Math.abs(targetRotation)>=Math.toRadians(70)){
-            clamped_target_rot = Math.toRadians(70)*Math.signum(targetRotation);
+        if (Math.abs(targetRotation)>=Math.toRadians(angleLimit)){
+            clamped_target_rot = Math.toRadians(angleLimit)*Math.signum(targetRotation);
         }
 
         turretController.p = P; turretController.i = I; turretController.d = D; turretController.f = F;

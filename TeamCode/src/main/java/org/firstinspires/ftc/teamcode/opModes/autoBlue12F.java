@@ -114,7 +114,7 @@ public class autoBlue12F extends OpMode {
             case 5:
             case 9:
                 if (!follower.isBusy() && (robot.shooter.atTargetFlywheelRPM() || shooterTimeoutTimer.getElapsedTimeSeconds() > 3)) {
-                    robot.shooter.delayedShootSequence.start();
+                    robot.shooter.shootSequenceLong.start();
                     pathState++;
                 }
                 break;
