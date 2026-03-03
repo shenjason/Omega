@@ -25,8 +25,8 @@ public class Turret extends Assembly {
     public double P=2.5,I=0,D=0.1,F=0.2;
     public double _P=1.2,_I=0,_D=0.02, _F = 0.2;
     public PIDcontroller turretController, turretControllerSecondary;
-    public boolean isInCamera, atLimit;
-    public double Ta, Tx;
+    public boolean isInCamera, atLimit, forcedEstimation;
+    public double Ta, Tx, overrideAngle;
     public int mode = IDLE_MODE;
     public double offsetAngle = 0, debugTargetAngle=0, fineTuneOffsetAngle=0, targetPointX;
 
@@ -42,10 +42,10 @@ public class Turret extends Assembly {
 
     public final static int GPP = 0, PGP = 1, PPG = 2, BLUE_TARGET_LINE = 3, RED_TARGET_LINE = 4, TRACKING_MODE = 0, IDLE_MODE = 1;
     public static final double TARGET_BLUE_X=16, TARGET_Y=131, TARGET_RED_X=144-TARGET_BLUE_X;
-    public final double angleLimit=65, target_rate_limit=30;
+    public final double angleLimit=65, target_rate_limit=1.5;
 
 
-    Timer cameraTTimer; SlewRateLimiter turretFineTuneRateLimiter;
+    Timer cameraTTimer; SlewRateLimiter turretRateLimiter;
 
 
 
@@ -73,7 +73,8 @@ public class Turret extends Assembly {
         limelight.start();
 
         cameraTTimer = new Timer();
-        turretFineTuneRateLimiter = new SlewRateLimiter(target_rate_limit);
+        turretRateLimiter = new SlewRateLimiter(target_rate_limit);
+        forcedEstimation = false;
     }
 
 
@@ -103,7 +104,10 @@ public class Turret extends Assembly {
         debugAddData("Output", turretController.currentOutput);
         debugAddData("isPointed",atTargetPosition());
 
-        if (isInCamera && mode==Turret.TRACKING_MODE){fineTuneTurretRotation();}
+        if (isInCamera && mode==Turret.TRACKING_MODE && !forcedEstimation){
+            fineTuneTurretRotation();
+            turretRateLimiter.reset();
+        }
         else{estimateTurretRotation();}
     }
 
@@ -114,7 +118,7 @@ public class Turret extends Assembly {
  
         turretControllerSecondary.p = _P; turretControllerSecondary.i = _I; turretControllerSecondary.d = _D; turretControllerSecondary.f = F;
 
-        double power = (Math.abs(Tx) <= 1.5) ? 0 : turretControllerSecondary.step(turretFineTuneRateLimiter.step(fineTuneOffsetAngle), -limitedTx);
+        double power = (Math.abs(Tx) <= 1) ? 0 : turretControllerSecondary.step(fineTuneOffsetAngle, -limitedTx);
         atLimit = false;
         if (Math.abs(targetRotation) > Math.toRadians(angleLimit)){
             atLimit = true;
@@ -141,7 +145,7 @@ public class Turret extends Assembly {
         double robotAngle = cp.getHeading();
 
 
-        double angle = getAngle(X,Y,targetPointX,TARGET_Y);
+        double angle = (forcedEstimation) ? turretRateLimiter.step(overrideAngle) : getAngle(X,Y,targetPointX,TARGET_Y);
 
 
         targetRotation = getDiff(angle,robotAngle);
@@ -190,7 +194,7 @@ public class Turret extends Assembly {
     }
 
     public boolean atTargetPosition(){
-        return Math.abs(turretController.getE()) <= Math.toRadians(2);
+        return Math.abs(turretController.getE()) <= Math.toRadians(1.5);
     }
 
     public static double getAngle(double x1, double y1, double x2, double y2) {
@@ -200,7 +204,7 @@ public class Turret extends Assembly {
         return ((angle1-angle2+Math.toRadians(180))%Math.toRadians(360)-Math.toRadians(180));
     }
     public boolean isPointed(){
-        return mode == IDLE_MODE || (Math.abs(Tx) <= 8 && isInCamera);
+        return (Math.abs(Tx) <= 5 && isInCamera);
     }
 
     public Pose closestPointOnLine(double slope, double intercept, double x0, double y0, double heading){

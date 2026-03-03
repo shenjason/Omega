@@ -17,9 +17,9 @@ public class LowPassFilter {
             firstLoop = false;
         }
 
-        double _lastValue = lastValue;
+        double output = alpha * value + (1-alpha)*lastValue;
         lastValue = value;
 
-        return alpha * value + (1-alpha)*_lastValue;
+        return output;
     }
 }

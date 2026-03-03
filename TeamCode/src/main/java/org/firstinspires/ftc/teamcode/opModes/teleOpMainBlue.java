@@ -66,7 +66,7 @@ public class teleOpMainBlue extends OpMode {
             }
         }
 
-        if (gamepad1.right_stick_button){
+        if (gamepad1.right_trigger > 0){
             robot.shoot();
         }
 

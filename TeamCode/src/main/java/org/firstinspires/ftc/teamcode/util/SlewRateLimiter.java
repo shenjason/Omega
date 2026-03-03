@@ -5,12 +5,13 @@ import com.pedropathing.util.Timer;
 public class SlewRateLimiter {
 
 
-    boolean firstLoop = true;
+    boolean firstLoop;
     double pT, rate_limit, lastTarget;
     Timer timer;
     public SlewRateLimiter(double _rate_limit){
         firstLoop = true;
         rate_limit = _rate_limit;
+        timer = new Timer();
     }
 
     public void reset(){firstLoop = true;}

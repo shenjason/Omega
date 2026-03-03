@@ -11,7 +11,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.teamcode.util.Assembly;
 
 public class Robot extends Assembly {
-    public final double GREEN = 0.45, ORANGE = 0.33, RED = 0.28, BLUE = .611;
+    public final double GREEN = 0.45, ORANGE = 0.33, RED = 0.28, BLUE = .611, PURPLE = .666, AZURE = 0.555;
     public Shooter shooter;
 
     public Servo led1, led2;
@@ -35,14 +35,18 @@ public class Robot extends Assembly {
     }
 
     public void shoot(){
-        if (shooter.canShoot()) return;
-        shooter.shoot();
+        if (!shooter.canShoot()) return;
+        if (follower.getPose().getY() <= 32){
+            shooter.longShoot();
+        }else{
+            shooter.shoot();
+        }
     }
 
 
     public void idle(){
         shooter.idleMode();
-        shooter.offShooter();
+        shooter.setFlywheelVel(1300);
     }
 
     public void tracking(){
@@ -92,16 +96,15 @@ public class Robot extends Assembly {
         if (shooter.turret.mode == Turret.TRACKING_MODE){
             if (shooter.turret.atLimit){
                 led1.setPosition(ORANGE);
-                led2.setPosition(ORANGE);
             }else {
-                double state = (shooter.canShoot()) ? GREEN : (shooter.atTargetFlywheelRPMBroad()) ? BLUE : RED;
+                double state = (shooter.canShoot() && !shooter.isInEstimation) ? GREEN : (shooter.isInEstimation && shooter.canShoot()) ? BLUE : RED;
                 led1.setPosition(state);
-                led2.setPosition(state);
             }
         }else{
             double state = (distanceSensor.getDistance(DistanceUnit.MM) < 95) ? GREEN : RED;
             led1.setPosition(state);
-            led2.setPosition(state);
         }
+
+        led2.setPosition(shooter.turret.mode == Turret.IDLE_MODE ? AZURE : PURPLE);
     }
 }

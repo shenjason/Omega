@@ -18,7 +18,7 @@ import org.firstinspires.ftc.teamcode.util.Sequencer;
 public class Shooter extends Assembly {
 
     //PID
-    public double flywheelP = 640, flyWheelI = 0, flyWheelD = 0, flyWheelF = 12d;
+    public double flywheelP = 300, flyWheelI = 0, flyWheelD = 22, flyWheelF = 12d;
     //Servo pos
     final double OPEN_GATE_POS = 0.5, CLOSE_GATE_POS = 0.4;
     //Prediction Vars
@@ -26,21 +26,22 @@ public class Shooter extends Assembly {
     final double flyWheelAngle = 40;
     final double artifactMass = 0.0748;
     final double dragCoff = .0037d;
-
+    final double accelAlpha = 0.2d;
+    LowPassFilter accelXFilter, accelYFilter;
     final double flyWheelEfficiencyCoff = 1.09d;
 
-    final double shooterLatency = 0.4d;
+    final double shooterLatency = 0.08d;
 
     //Prediction FlyWheel Vel adj
-    final double a_k=0.0132663, b_k=3.10801, c_k=1076.338;
-    final double cam_a = 342.85, cam_b = 1133.62;
+    final double a_k=0.0132663, b_k=3.10801, c_k=1000.338;
+    final double cam_a = 342.85, cam_b = 1023.62 - 60;
 
-    final double accel_lowPass_alpha = 0.2;
 
-    private LowPassFilter accel_X_lowPass, accel_Y_lowPass;
 
 
     //Ref
+
+
     DcMotorEx flywheelMotor;
     DcMotor intakeMotor1, intakeMotor2;
     Servo gateServo;
@@ -52,7 +53,7 @@ public class Shooter extends Assembly {
 
     public Turret turret;
     Follower follower;
-    public boolean turret_active = true, shooting = false;
+    public boolean turret_active = true, shooting = false, isInEstimation = false;
 
     PIDFCoefficients pidfCoefficients;
 
@@ -66,30 +67,33 @@ public class Shooter extends Assembly {
             () -> setIntakeMotorPower(0),
             () -> shooting = false
     ), List.of(
-            0d, 0d, 0d, 0.7d, 0.1d, 0d, 0d
+            0d, 0d, 0d, 1d, 0.1d, 0d, 0d
     ));
 
     public Sequencer shootSequenceLong = new Sequencer(List.of(
             () -> shooting = true,
             this::openGate,
-            () -> setIntakeMotorPower(-0.6),
+            () -> setIntakeMotorPower(-0.75),
             () -> setIntakeMotorPower(0.8),
             this::closeGate,
             () -> setIntakeMotorPower(0),
             () -> shooting = false
     ), List.of(
-            0d, 0d, 0d, 1.2d, 0.1d, 0d, 0d
+            0d, 0d, 0d, 1.8d, 0.1d, 0d, 0d
     ));
 
 
     public void autoAdjustShooterParameters(){
-        double vel = 1500;
+        double vel = calcShooterVel(calcDistanceFromDepot(follower.getPose()));
         if (turret.isInCamera) {
             vel = Math.round((cam_a / Math.sqrt(TagSize) + cam_b) * 0.1) * 10;
         }
 
         if (vel<1200) vel = 1200;
+
         turret.fineTuneOffsetAngle = 0;
+        if (follower.getPose().getY() <= 32) turret.fineTuneOffsetAngle = (side == SIDE_BLUE) ? Math.toRadians(-1.5) : Math.toRadians(1.5);
+
 
         setFlywheelVel(vel);
     }
@@ -119,11 +123,12 @@ public class Shooter extends Assembly {
 
         flywheelMotor.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, pidfCoefficients);
 
-        goalX = (side) ? 0 : 144;
-        goalY = 144;
+        goalX = (side) ? 8 : 136;
+        goalY = 136;
 
-        accel_X_lowPass = new LowPassFilter(accel_lowPass_alpha);
-        accel_Y_lowPass = new LowPassFilter(accel_lowPass_alpha);
+        accelXFilter = new LowPassFilter(accelAlpha);
+        accelYFilter = new LowPassFilter(accelAlpha);
+
 
         closeGate();
     }
@@ -142,12 +147,16 @@ public class Shooter extends Assembly {
         return Math.abs(flywheelVelE) <= 40;
     }
     public boolean canShoot(){
-        return atTargetFlywheelRPM()&& turret.isPointed();
+        return (atTargetFlywheelRPM() && turret.isPointed()) || (isInEstimation && atTargetFlywheelRPMBroad());
     }
 
     public void shoot(){
         if (shooting) return;
         shootSequence.start();
+    }
+    public void longShoot(){
+        if (shooting) return;
+        shootSequenceLong.start();
     }
 
     public void openGate(){ gateServo.setPosition(OPEN_GATE_POS);}
@@ -177,7 +186,7 @@ public class Shooter extends Assembly {
 
         double t = 0;
 
-        while (x < (distance / 39.37) && count < (maxTimeOfFlight / dt)){
+        while (x < (distance / 39.37d) && count < (maxTimeOfFlight / dt)){
             double currentVel = Math.sqrt(currentVelX * currentVelX + currentVelY * currentVelY);
             double accelX = -(dragCoff/artifactMass) * currentVel * currentVelX;
             double accelY = -9.81 -(dragCoff/artifactMass) * currentVel * currentVelY;
@@ -214,14 +223,17 @@ public class Shooter extends Assembly {
     public void trackingMode(){turret.mode = Turret.TRACKING_MODE;}
 
     public void setShootingParms(){
-        double filtered_accel_X = accel_X_lowPass.step(follower.getAcceleration().getXComponent());
-        double filtered_accel_Y = accel_Y_lowPass.step(follower.getAcceleration().getYComponent());
-        double posX_launch = follower.getPose().getX() + (follower.getVelocity().getXComponent() * shooterLatency) + (0.5d*follower.getAcceleration().getXComponent()*Math.pow(shooterLatency,2));
-        double posY_launch = follower.getPose().getY() + (follower.getVelocity().getYComponent() * shooterLatency) + (0.5d*follower.getAcceleration().getYComponent()*Math.pow(shooterLatency,2));
-        double velX_launch = follower.getVelocity().getXComponent() + (filtered_accel_X * shooterLatency);
-        double velY_launch = follower.getVelocity().getYComponent() + (filtered_accel_Y * shooterLatency);
+        double accelX = accelXFilter.step(follower.getAcceleration().getXComponent());
+        double accelY = accelYFilter.step(follower.getAcceleration().getYComponent());
+        double velX = follower.getVelocity().getXComponent();
+        double velY = follower.getVelocity().getYComponent();
+        double posX_launch = follower.getPose().getX() + (velX * shooterLatency) + 0.5d*(accelX)*shooterLatency*shooterLatency;
+        double posY_launch = follower.getPose().getY() + (velY * shooterLatency) + 0.5d*(accelY)*shooterLatency*shooterLatency;
+        double velX_launch = velX + accelX*shooterLatency;
+        double velY_launch = velY + accelY*shooterLatency;
 
-        double distance_to_goal = calcDistanceFromDepot(follower.getPose());
+
+        double distance_to_goal = calcDistanceFromDepot(new Pose(posX_launch, posY_launch));
         double target_shooter_vel = calcShooterVel(distance_to_goal);
         double flight_time = timeOfFlightPrediction(distance_to_goal, target_shooter_vel);
 
@@ -238,14 +250,14 @@ public class Shooter extends Assembly {
         }
 
         double target_global_angle = Turret.getAngle(posX_launch, posY_launch, v_goal_posX, v_goal_posY);
-        double current_global_angle = Turret.getAngle(follower.getPose().getX(),follower.getPose().getY(),turret.targetPointX,Turret.TARGET_Y);
 
-        turret.fineTuneOffsetAngle = Math.toDegrees(Turret.getDiff(current_global_angle, target_global_angle));
+        turret.forcedEstimation = true;
+        turret.overrideAngle = target_global_angle;
         setFlywheelVel(target_shooter_vel);
 
         debugAddLine(" ");
         debugAddLine("PredictionOutput");
-        debugAddData("Offset", Math.toDegrees(Turret.getDiff(current_global_angle, target_global_angle)));
+        debugAddData("Offset", Math.toDegrees(target_global_angle));
         debugAddData("ShooterVelocity", target_shooter_vel);
 
     }
@@ -253,10 +265,15 @@ public class Shooter extends Assembly {
 
     @Override
     public void update() {
-        if (turret.mode == Turret.TRACKING_MODE && !shooting) {
-            if (turret.isInCamera){
+        if (turret.mode == Turret.TRACKING_MODE) {
+            if (follower.getVelocity().getMagnitude() > 5 || !turret.isInCamera){
+                isInEstimation = true;
                 setShootingParms();
             }else{
+                accelXFilter.reset();
+                accelYFilter.reset();
+                turret.forcedEstimation = false;
+                isInEstimation = false;
                 autoAdjustShooterParameters();
             }
         }
@@ -280,6 +297,8 @@ public class Shooter extends Assembly {
         debugAddLine("Prediction");
         debugAddData("Flight Of Time: ", timeOfFlightPrediction(calcDistanceFromDepot(follower.getPose()), targetFlyWheelVel));
         debugAddData("Distance from Depot: ", calcDistanceFromDepot(follower.getPose()));
+        debugAddData("Robot X", follower.getPose().getX());
+        debugAddData("Robot Y", follower.getPose().getY());
         debugAddData("Robot Velocity: ", follower.getVelocity().getMagnitude());
         debugAddData("Robot Acceleration: ", follower.getAcceleration().getMagnitude());
 
