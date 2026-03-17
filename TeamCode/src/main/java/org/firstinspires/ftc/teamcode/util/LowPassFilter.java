@@ -42,7 +42,7 @@ public class LowPassFilter {
             firstLoop = false;
         }
 
-        double _lastValue = lastValue;
+        double output = alpha * value + (1-alpha)*lastValue;
         lastValue = value;
 
         // EMA formula: alpha * current + (1 - alpha) * previous

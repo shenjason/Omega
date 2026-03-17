@@ -24,6 +24,7 @@ public class SlewRateLimiter {
     public SlewRateLimiter(double _rate_limit){
         firstLoop = true;
         rate_limit = _rate_limit;
+        timer = new Timer();
     }
 
     /** Resets the rate limiter state */

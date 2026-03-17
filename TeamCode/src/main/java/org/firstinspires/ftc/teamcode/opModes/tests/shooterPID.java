@@ -51,7 +51,7 @@ public class shooterPID extends OpMode {
         follower.setTeleOpDrive(
                 -gamepad1.left_stick_y * speed,
                 -gamepad1.left_stick_x * speed,
-               gamepad1.right_stick_x * speed * 0.8,
+               -gamepad1.right_stick_x * speed * 0.8,
                 true // Robot Centric
         );
 

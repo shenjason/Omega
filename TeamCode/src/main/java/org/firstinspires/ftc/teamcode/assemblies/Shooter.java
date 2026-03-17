@@ -53,7 +53,6 @@ public class Shooter extends Assembly {
     /** Low-pass filter smoothing factor for acceleration data */
     final double accel_lowPass_alpha = 0.2;
 
-    private LowPassFilter accel_X_lowPass, accel_Y_lowPass;
 
     // --- Hardware References ---
     DcMotorEx flywheelMotor;
@@ -89,20 +88,20 @@ public class Shooter extends Assembly {
             () -> setIntakeMotorPower(0),
             () -> shooting = false
     ), List.of(
-            0d, 0d, 0d, 0.7d, 0.1d, 0d, 0d
+            0d, 0d, 0d, 1d, 0.1d, 0d, 0d
     ));
 
     /** Extended shoot sequence with 1.2s forward intake duration (vs 0.7s standard) */
     public Sequencer shootSequenceLong = new Sequencer(List.of(
             () -> shooting = true,
             this::openGate,
-            () -> setIntakeMotorPower(-0.6),
+            () -> setIntakeMotorPower(-0.75),
             () -> setIntakeMotorPower(0.8),
             this::closeGate,
             () -> setIntakeMotorPower(0),
             () -> shooting = false
     ), List.of(
-            0d, 0d, 0d, 1.2d, 0.1d, 0d, 0d
+            0d, 0d, 0d, 1.8d, 0.1d, 0d, 0d
     ));
 
 
@@ -112,13 +111,16 @@ public class Shooter extends Assembly {
      * Falls back to 1500 RPM if camera doesn't have a target, minimum 1200 RPM.
      */
     public void autoAdjustShooterParameters(){
-        double vel = 1500;
+        double vel = calcShooterVel(calcDistanceFromDepot(follower.getPose()));
         if (turret.isInCamera) {
             vel = Math.round((cam_a / Math.sqrt(TagSize) + cam_b) * 0.1) * 10;
         }
 
         if (vel<1200) vel = 1200;
+
         turret.fineTuneOffsetAngle = 0;
+        if (follower.getPose().getY() <= 32) turret.fineTuneOffsetAngle = (side == SIDE_BLUE) ? Math.toRadians(-1.5) : Math.toRadians(1.5);
+
 
         setFlywheelVel(vel);
     }
@@ -176,13 +178,17 @@ public class Shooter extends Assembly {
 
     /** Returns true if both flywheel is at target RPM AND turret is aimed at goal */
     public boolean canShoot(){
-        return atTargetFlywheelRPM()&& turret.isPointed();
+        return (atTargetFlywheelRPM() && turret.isPointed()) || (isInEstimation && atTargetFlywheelRPMBroad());
     }
 
     /** Triggers the shoot sequence if not already shooting */
     public void shoot(){
         if (shooting) return;
         shootSequence.start();
+    }
+    public void longShoot(){
+        if (shooting) return;
+        shootSequenceLong.start();
     }
 
     public void openGate(){ gateServo.setPosition(OPEN_GATE_POS);}
@@ -303,14 +309,14 @@ public class Shooter extends Assembly {
 
         // Calculate turret offset angle to aim at the virtual goal
         double target_global_angle = Turret.getAngle(posX_launch, posY_launch, v_goal_posX, v_goal_posY);
-        double current_global_angle = Turret.getAngle(follower.getPose().getX(),follower.getPose().getY(),turret.targetPointX,Turret.TARGET_Y);
 
-        turret.fineTuneOffsetAngle = Math.toDegrees(Turret.getDiff(current_global_angle, target_global_angle));
+        turret.forcedEstimation = true;
+        turret.overrideAngle = target_global_angle;
         setFlywheelVel(target_shooter_vel);
 
         debugAddLine(" ");
         debugAddLine("PredictionOutput");
-        debugAddData("Offset", Math.toDegrees(Turret.getDiff(current_global_angle, target_global_angle)));
+        debugAddData("Offset", Math.toDegrees(target_global_angle));
         debugAddData("ShooterVelocity", target_shooter_vel);
 
     }
@@ -349,6 +355,8 @@ public class Shooter extends Assembly {
         debugAddLine("Prediction");
         debugAddData("Flight Of Time: ", timeOfFlightPrediction(calcDistanceFromDepot(follower.getPose()), targetFlyWheelVel));
         debugAddData("Distance from Depot: ", calcDistanceFromDepot(follower.getPose()));
+        debugAddData("Robot X", follower.getPose().getX());
+        debugAddData("Robot Y", follower.getPose().getY());
         debugAddData("Robot Velocity: ", follower.getVelocity().getMagnitude());
         debugAddData("Robot Acceleration: ", follower.getAcceleration().getMagnitude());
 

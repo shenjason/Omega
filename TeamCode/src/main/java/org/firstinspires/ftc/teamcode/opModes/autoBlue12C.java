@@ -120,7 +120,7 @@ public class autoBlue12C extends OpMode {
             case 0:
                 // Initialize: spin up flywheel and set turret to fixed 39-degree angle
                 robot.shooter.setFlywheelVel(1320);
-                robot.shooter.turret.debugTargetAngle = Math.toRadians(39) * ((SIDE) ? 1 : -1);
+                robot.shooter.turret.debugTargetAngle = Math.toRadians(37) * ((SIDE) ? 1 : -1);
                 follower.followPath(paths.start_shoot, true);
                 pathState++;
                 shooterTimeoutTimer.resetTimer();
@@ -133,7 +133,7 @@ public class autoBlue12C extends OpMode {
             case 14: // After cycle 3 return
                 // Wait until path complete AND (flywheel ready OR 2.5s timeout)
                 if (!follower.isBusy() && (robot.shooter.atTargetFlywheelRPM() || shooterTimeoutTimer.getElapsedTimeSeconds() > 2.5)){
-                    robot.shoot();
+                    robot.shooter.shoot();
                     pathState++;
                 }
                 break;

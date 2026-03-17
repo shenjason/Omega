@@ -62,14 +62,18 @@ public class Robot extends Assembly {
 
     /** Fires the shooter if the robot is ready (flywheel at target RPM and turret aimed) */
     public void shoot(){
-        if (shooter.canShoot()) return;
-        shooter.shoot();
+        if (!shooter.canShoot()) return;
+        if (follower.getPose().getY() <= 32){
+            shooter.longShoot();
+        }else{
+            shooter.shoot();
+        }
     }
 
     /** Switches to idle mode — stops turret tracking and turns off the flywheel */
     public void idle(){
         shooter.idleMode();
-        shooter.offShooter();
+        shooter.setFlywheelVel(1300);
     }
 
     /** Switches to tracking mode — turret begins vision-based target tracking */
@@ -132,18 +136,17 @@ public class Robot extends Assembly {
             if (shooter.turret.atLimit){
                 // Orange: turret has hit its ±65° rotation limit
                 led1.setPosition(ORANGE);
-                led2.setPosition(ORANGE);
             }else {
                 // Green = ready to shoot, Blue = flywheel ready but turret aligning, Red = not ready
                 double state = (shooter.canShoot()) ? GREEN : (shooter.atTargetFlywheelRPMBroad()) ? BLUE : RED;
                 led1.setPosition(state);
-                led2.setPosition(state);
             }
         }else{
             // In idle mode: Green if artifact detected in intake (< 95mm), Red otherwise
             double state = (distanceSensor.getDistance(DistanceUnit.MM) < 95) ? GREEN : RED;
             led1.setPosition(state);
-            led2.setPosition(state);
         }
+
+        led2.setPosition(shooter.turret.mode == Turret.IDLE_MODE ? AZURE : PURPLE);
     }
 }

@@ -106,7 +106,8 @@ public class Turret extends Assembly {
         limelight.start();
 
         cameraTTimer = new Timer();
-        turretFineTuneRateLimiter = new SlewRateLimiter(target_rate_limit);
+        turretRateLimiter = new SlewRateLimiter(target_rate_limit);
+        forcedEstimation = false;
     }
 
 
@@ -258,7 +259,7 @@ public class Turret extends Assembly {
 
     /** Returns true if the turret PID error is within +/-2 degrees of target */
     public boolean atTargetPosition(){
-        return Math.abs(turretController.getE()) <= Math.toRadians(2);
+        return Math.abs(turretController.getE()) <= Math.toRadians(1.5);
     }
 
     /** Calculates the angle (radians) from point (x1,y1) to point (x2,y2) using atan2 */
@@ -273,7 +274,7 @@ public class Turret extends Assembly {
 
     /** Returns true if turret is aimed at the goal (idle mode always returns true, tracking requires Tx < 8 deg) */
     public boolean isPointed(){
-        return mode == IDLE_MODE || (Math.abs(Tx) <= 8 && isInCamera);
+        return (Math.abs(Tx) <= 5 && isInCamera);
     }
 
     /** Finds the closest point on a line (y = slope*x + intercept) to a given point (x0, y0) */
