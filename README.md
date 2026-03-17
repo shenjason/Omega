@@ -6,11 +6,11 @@
 
 *FIRST Tech Challenge · DECODE 2025–2026 Season*
 
-![FTC SDK](https://img.shields.io/badge/FTC_SDK-v11.0-blue?style=flat-square)
-![Pedro Pathing](https://img.shields.io/badge/Pedro_Pathing-v2.0.6-orange?style=flat-square)
-![Java](https://img.shields.io/badge/Java-8-red?style=flat-square&logo=openjdk&logoColor=white)
-![License](https://img.shields.io/badge/License-BSD--3--Clause-green?style=flat-square)
-![GitHub last commit](https://img.shields.io/github/last-commit/shenjason/Omega?style=flat-square)
+[![FTC SDK](https://img.shields.io/badge/FTC_SDK-v11.0-blue?style=flat-square)](https://github.com/FIRST-Tech-Challenge/FtcRobotController)
+[![Pedro Pathing](https://img.shields.io/badge/Pedro_Pathing-v2.0.6-orange?style=flat-square)](https://pedropathing.com/)
+[![Java](https://img.shields.io/badge/Java-8-red?style=flat-square&logo=openjdk&logoColor=white)](https://www.java.com/)
+[![License](https://img.shields.io/badge/License-BSD--3--Clause-green?style=flat-square)](LICENSE)
+[![GitHub last commit](https://img.shields.io/github/last-commit/shenjason/Omega?style=flat-square)](https://github.com/shenjason/Omega/commits/master)
 
 *A student-led FTC team focused on technical excellence, community impact, and long-term sustainability.*
 
